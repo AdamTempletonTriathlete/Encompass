@@ -1,14 +1,16 @@
-import { memo, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { memo, type ReactElement, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { useGameStore } from "../store";
-import type { BiomeId, Coordinate, ResourceNode, Traveller } from "../types";
+import type { BiomeId, Coordinate, ResourceId, ResourceNode, Traveller } from "../types";
 import {
   BIOMES,
   CHUNK_SIZE,
   ENCOUNTER_RADIUS,
+  GATHER_RADIUS,
+  RESOURCES,
   distance,
   getBiomeAt,
   getNodesAround,
@@ -198,20 +200,148 @@ function Explorer({ position, color, heading = 0, camping = false }: {
   );
 }
 
-function FindMarker({ node }: { node: ResourceNode }) {
-  const marker = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    if (marker.current) {
-      marker.current.rotation.y = clock.elapsedTime * 0.6;
-      marker.current.position.y = terrainHeight(node.x, node.y) + 0.85 + Math.sin(clock.elapsedTime * 2) * 0.12;
-    }
-  });
+const M = ({ color, rough = 0.85, metal = 0, flat = false, emissive }: { color: string; rough?: number; metal?: number; flat?: boolean; emissive?: string }) => (
+  <meshStandardMaterial color={color} roughness={rough} metalness={metal} flatShading={flat} emissive={emissive} emissiveIntensity={emissive ? 0.35 : 0} />
+);
+
+function WoodModel() {
   return (
-    <group ref={marker} position={[node.x, terrainHeight(node.x, node.y) + 0.85, -node.y]}>
-      <mesh>
-        <octahedronGeometry args={[0.3, 0]} />
-        <meshStandardMaterial color="#f4dc9d" emissive="#d4ae68" emissiveIntensity={0.45} />
+    <group rotation={[0, 0, Math.PI / 2]} position={[0, 0.3, 0]}>
+      {[[0, 0, 0], [0.28, 0.2, 0.05], [0.28, -0.2, -0.05]].map(([y, z, x], i) => (
+        <group key={i} position={[x, y, z]} rotation={[0, i * 0.4, 0]}>
+          <mesh castShadow><cylinderGeometry args={[0.17, 0.17, 1.1, 12]} /><M color="#8a5f3a" rough={1} /></mesh>
+          <mesh position={[0, 0.551, 0]}><cylinderGeometry args={[0.15, 0.15, 0.01, 12]} /><M color="#d9b583" /></mesh>
+          <mesh position={[0, -0.551, 0]}><cylinderGeometry args={[0.15, 0.15, 0.01, 12]} /><M color="#d9b583" /></mesh>
+          <mesh position={[0.17, 0.1, 0]}><torusGeometry args={[0.05, 0.015, 6, 10]} /><M color="#5e3f26" /></mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function HerbsModel() {
+  return (
+    <group position={[0, 0.05, 0]}>
+      {[0, 1, 2, 3, 4].map((i) => {
+        const angle = (i / 5) * Math.PI * 2;
+        return (
+          <group key={i} rotation={[0, angle, 0.45]}>
+            <mesh position={[0, 0.35, 0]}><cylinderGeometry args={[0.015, 0.025, 0.7, 5]} /><M color="#5f8a4c" /></mesh>
+            <mesh position={[0.06, 0.5, 0]} scale={[1, 1.8, 0.3]} castShadow><sphereGeometry args={[0.1, 8, 6]} /><M color="#7fa55e" /></mesh>
+            <mesh position={[-0.06, 0.32, 0]} scale={[1, 1.6, 0.3]}><sphereGeometry args={[0.09, 8, 6]} /><M color="#8fb86b" /></mesh>
+          </group>
+        );
+      })}
+      <mesh position={[0, 0.16, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.07, 0.025, 6, 12]} /><M color="#b88a5d" /></mesh>
+      <mesh position={[0, 0.72, 0]}><sphereGeometry args={[0.09, 8, 6]} /><M color="#c9a3d6" emissive="#a97dbd" /></mesh>
+    </group>
+  );
+}
+
+function StoneModel() {
+  return (
+    <group>
+      <mesh position={[0, 0.3, 0]} rotation={[0.2, 0.5, 0.1]} scale={[1, 0.8, 0.9]} castShadow><dodecahedronGeometry args={[0.42, 1]} /><M color="#9a9a90" rough={1} flat /></mesh>
+      <mesh position={[0.38, 0.15, 0.1]} rotation={[0.4, 1, 0]} scale={[1, 0.7, 1]} castShadow><dodecahedronGeometry args={[0.22, 0]} /><M color="#b0aea2" rough={1} flat /></mesh>
+      <mesh position={[-0.3, 0.12, 0.25]} rotation={[1, 0.2, 0.5]} castShadow><dodecahedronGeometry args={[0.16, 0]} /><M color="#84847b" rough={1} flat /></mesh>
+    </group>
+  );
+}
+
+function FiberModel() {
+  return (
+    <group position={[0, 0.45, 0]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh castShadow><cylinderGeometry args={[0.22, 0.22, 0.7, 14]} /><M color="#d5c490" rough={1} /></mesh>
+      {[-0.22, 0, 0.22].map((y) => (
+        <mesh key={y} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.225, 0.018, 6, 20]} /><M color="#a68b55" /></mesh>
+      ))}
+      {[0, 1, 2].map((i) => (
+        <mesh key={i} position={[0.1 * i - 0.1, 0.42 + i * 0.03, 0.04 * i]} rotation={[0.3 * i - 0.3, 0, 0.2 * i]}><cylinderGeometry args={[0.012, 0.012, 0.28, 4]} /><M color="#e3d6a6" /></mesh>
+      ))}
+    </group>
+  );
+}
+
+function BerriesModel() {
+  const berries: [number, number, number][] = [[0, 0.55, 0], [0.16, 0.46, 0.08], [-0.14, 0.44, 0.1], [0.04, 0.4, -0.15], [-0.08, 0.6, -0.08], [0.2, 0.62, -0.05]];
+  return (
+    <group>
+      <mesh position={[0, 0.25, 0]}><cylinderGeometry args={[0.02, 0.035, 0.45, 5]} /><M color="#5a7a45" /></mesh>
+      {berries.map((p, i) => (
+        <group key={i} position={p}>
+          <mesh castShadow><sphereGeometry args={[0.11, 12, 10]} /><M color="#b0344d" rough={0.35} emissive="#7a1d33" /></mesh>
+          <mesh position={[0, 0.1, 0]} scale={[1, 0.4, 1]}><coneGeometry args={[0.05, 0.05, 5]} /><M color="#4f7a3d" /></mesh>
+        </group>
+      ))}
+      <mesh position={[0.18, 0.75, 0]} rotation={[0, 0, -0.6]} scale={[1, 0.3, 1.5]}><sphereGeometry args={[0.15, 8, 6]} /><M color="#6c9a51" /></mesh>
+      <mesh position={[-0.2, 0.7, 0.05]} rotation={[0, 0, 0.6]} scale={[1, 0.3, 1.5]}><sphereGeometry args={[0.14, 8, 6]} /><M color="#5f8c47" /></mesh>
+    </group>
+  );
+}
+
+function MineralModel() {
+  const crystals: [number, number, number, number, number, number][] = [
+    [0, 0.5, 0, 0.12, 0.9, 0], [0.2, 0.35, 0.05, 0.09, 0.6, -0.4], [-0.2, 0.32, -0.02, 0.09, 0.55, 0.45], [0.05, 0.28, 0.2, 0.08, 0.5, 0.3], [-0.06, 0.26, -0.2, 0.07, 0.45, -0.3],
+  ];
+  return (
+    <group>
+      <mesh position={[0, 0.07, 0]} scale={[1, 0.4, 1]} castShadow><dodecahedronGeometry args={[0.38, 0]} /><M color="#6f7b78" rough={1} flat /></mesh>
+      {crystals.map(([x, y, z, r, h, tilt], i) => (
+        <group key={i} position={[x, y, z]} rotation={[tilt * 0.6, i, tilt]}>
+          <mesh castShadow><cylinderGeometry args={[r, r, h * 0.7, 6]} /><meshStandardMaterial color="#9cdad0" roughness={0.1} metalness={0.2} transparent opacity={0.88} emissive="#5fb3a6" emissiveIntensity={0.4} /></mesh>
+          <mesh position={[0, h * 0.35 + h * 0.15, 0]}><coneGeometry args={[r, h * 0.3, 6]} /><meshStandardMaterial color="#c5f2ea" roughness={0.1} metalness={0.2} emissive="#7cd2c4" emissiveIntensity={0.5} /></mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+const MODELS: Record<ResourceId, () => ReactElement> = {
+  wood: WoodModel, herbs: HerbsModel, stone: StoneModel, fiber: FiberModel, berries: BerriesModel, mineral: MineralModel,
+};
+
+function FindMarker({ node, reachable }: { node: ResourceNode; reachable: boolean }) {
+  const gather = useGameStore((state) => state.gather);
+  const [hovered, setHovered] = useState(false);
+  const glow = useRef<THREE.Mesh>(null);
+  const ring = useRef<THREE.Mesh>(null);
+  const light = useRef<THREE.PointLight>(null);
+  const Model = MODELS[node.resource];
+  useFrame(({ clock }) => {
+    const pulse = (Math.sin(clock.elapsedTime * 3) + 1) / 2;
+    if (glow.current) {
+      glow.current.scale.setScalar(1 + pulse * 0.25 + (hovered ? 0.15 : 0));
+      (glow.current.material as THREE.MeshBasicMaterial).opacity = (0.12 + pulse * 0.2) * (reachable ? 1 : 0.4);
+    }
+    if (ring.current) {
+      const t = (clock.elapsedTime * 0.8) % 1;
+      ring.current.scale.setScalar(0.6 + t * 0.9);
+      (ring.current.material as THREE.MeshBasicMaterial).opacity = (1 - t) * 0.6 * (reachable ? 1 : 0.3);
+    }
+    if (light.current) light.current.intensity = reachable ? 0.6 + pulse * 1.4 : 0;
+  });
+  const pickUp = (event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation();
+    gather(node);
+  };
+  const glowColor = RESOURCES[node.resource].color;
+  return (
+    <group
+      position={[node.x, terrainHeight(node.x, node.y), -node.y]}
+      onClick={pickUp}
+      onPointerOver={(event) => { event.stopPropagation(); setHovered(true); if (reachable) document.body.style.cursor = "pointer"; }}
+      onPointerOut={() => { setHovered(false); document.body.style.cursor = ""; }}
+    >
+      <group rotation={[0, node.x * 7.3, 0]} scale={1.15}><Model /></group>
+      <mesh ref={glow} position={[0, 0.4, 0]}>
+        <sphereGeometry args={[0.8, 20, 16]} />
+        <meshBasicMaterial color={glowColor} transparent opacity={0.2} depthWrite={false} blending={THREE.AdditiveBlending} />
       </mesh>
+      <mesh ref={ring} position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.7, 0.85, 32]} />
+        <meshBasicMaterial color="#fff2c0" transparent opacity={0.5} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <pointLight ref={light} position={[0, 0.8, 0]} color={glowColor} distance={4} intensity={0} />
     </group>
   );
 }
@@ -305,7 +435,7 @@ export default function Scene3D() {
             <SceneryChunk chunkX={x} chunkY={y} />
           </group>
         ))}
-        {nodes.map((node) => <FindMarker key={node.id} node={node} />)}
+        {nodes.map((node) => <FindMarker key={node.id} node={node} reachable={distance(position, node) <= GATHER_RADIUS} />)}
         {travellers.map((traveller) => <TravellerFigure key={traveller.id} traveller={traveller} />)}
         <Explorer position={position} color="#c87952" heading={heading} camping={camping} />
         <FollowingControls initial={initial} />
