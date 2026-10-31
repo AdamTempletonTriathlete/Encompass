@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
 import {
-  ArrowDownRight,
   ArrowRight,
   Backpack,
   BookOpen,
@@ -12,8 +11,6 @@ import {
   Leaf,
   MapPin,
   Minus,
-  MoveUpRight,
-  Plus,
   Sparkles,
   TentTree,
   UsersRound,
@@ -30,7 +27,6 @@ import {
   GATHER_RADIUS,
   INVENTORY_CAPACITY,
   OFFLINE_SPEED,
-  ONLINE_SPEED,
   RESOURCES,
   UPGRADED_OFFLINE_SPEED,
   distance,
@@ -92,10 +88,8 @@ function CompassDial({ heading, onChange }: { heading: number; onChange: (headin
       <span className="dial-cardinal east">E</span>
       <span className="dial-cardinal south">S</span>
       <span className="dial-cardinal west">W</span>
-      <div className="dial-needle" style={{ transform: `rotate(${heading}deg)` }}>
-        <span className="needle-point" /><span className="needle-tail" />
-      </div>
-      <span className="dial-pivot" />
+      <div className="dial-needle" style={{ transform: `rotate(${heading}deg)` }}><span className="needle-point" /></div>
+      <span className="dial-degrees">{String(heading).padStart(3, "0")}°</span>
     </div>
   );
 }
@@ -332,14 +326,6 @@ function App() {
         </header>
 
         <div className="scene-content">
-          <div className="location-story">
-            <div className="location-tag"><MapPin size={15} /><span>YOU'RE EXPLORING</span><strong>{biome.name}</strong><ArrowDownRight size={14} /></div>
-          </div>
-
-          <div className="scene-right">
-            <div className="world-index"><span>THE OPEN WORLD</span><strong>01 <i>/</i> ∞</strong><small>ONE WORLD, MANY PATHS</small></div>
-          </div>
-
           {nearbyFind && (
             <button className="find-prompt" onClick={() => gather(nearbyFind)}>
               <span className="find-sparkle"><Sparkles size={18} /></span>
@@ -349,33 +335,20 @@ function App() {
           )}
 
           <div className="bottom-hud">
-            <section className="navigation-panel" aria-label="Compass and travel">
-              <div className="navigation-heading"><div><span className="eyebrow">YOUR DIRECTION</span><h2>Find your way<span>.</span></h2></div><MoveUpRight size={17} /></div>
-              <div className="navigation-body">
-                <CompassDial heading={heading} onChange={setHeading} />
-                <div className="heading-info"><span>HEADING</span><strong>{String(heading).padStart(3, "0")}<sup>°</sup></strong><p>{headingLabel(heading)} <i /> {camping ? "AT CAMP" : "ON THE MOVE"}</p><small>Drag the compass<br />to change direction</small><div className="heading-buttons"><button onClick={() => setHeading(heading - 1)} aria-label="Turn one degree left"><Minus size={13} /></button><button onClick={() => setHeading(heading + 1)} aria-label="Turn one degree right"><Plus size={13} /></button></div></div>
-              </div>
-              <div className="navigation-footer"><span><i className={camping ? "camp-dot" : ""} /> {camping ? "RESTING AT CAMP" : "EXPLORING ONLINE"}</span><strong>{camping ? "0" : ONLINE_SPEED} <small>u/s</small></strong></div>
-            </section>
-
-            <div className="bottom-center">
-              <div className="journey-line"><span /> THE JOURNEY CONTINUES <span /></div>
-              <p>Where will you wander next?</p>
-              <small>DRAG TO LOOK AROUND &nbsp;·&nbsp; SCROLL TO ZOOM</small>
+            <button className="side-button" onClick={() => setPanel("away")} aria-label={`When you're away: ${awayMode === "camp" ? "camp and rest" : "keep travelling"}`}>
+              {awayMode === "camp" ? <TentTree size={20} /> : <Wind size={20} />}
+            </button>
+            <div className="compass-hud">
+              <div className="location-tag"><MapPin size={14} /><strong>{biome.name}</strong></div>
+              <CompassDial heading={heading} onChange={setHeading} />
             </div>
-
-            <div className="right-hud">
-              {nearbyTraveller && !camping ? (
-                <button className="encounter-card" onClick={() => { setSelectedTraveller(nearbyTraveller); setPanel("encounter"); }}>
-                  <div className="encounter-top"><span><i /> SOMEONE IS NEARBY</span><MoveUpRight size={15} /></div>
-                  <div className="encounter-main"><span className="traveller-avatar" style={{ background: nearbyTraveller.color }}>{nearbyTraveller.name[0]}</span><span><strong>{nearbyTraveller.name}</strong><small>{STATUS_LABELS[nearbyTraveller.status]}</small></span><ChevronRight size={17} /></div>
-                  <div className="encounter-caption">A friendly face along the way <span>↗</span></div>
-                </button>
-              ) : (
-                <div className="quiet-card"><Sparkles size={18} /><div><strong>{camping ? "A moment of peace" : "A little space to roam"}</strong><span>{camping ? "Your camp is safe and protected." : "You never know who you'll meet."}</span></div></div>
-              )}
-              <button className="away-trigger" onClick={() => setPanel("away")}><span className="away-trigger-icon">{awayMode === "camp" ? <TentTree size={17} /> : <Wind size={17} />}</span><span><small>WHEN YOU'RE AWAY</small><strong>{awayMode === "camp" ? "Camp & rest" : "Keep travelling"}</strong></span><ChevronRight size={16} /></button>
-            </div>
+            {nearbyTraveller && !camping ? (
+              <button className="side-button nearby" onClick={() => { setSelectedTraveller(nearbyTraveller); setPanel("encounter"); }} aria-label={`${nearbyTraveller.name} is nearby`}>
+                <span className="traveller-avatar" style={{ background: nearbyTraveller.color }}>{nearbyTraveller.name[0]}</span>
+              </button>
+            ) : (
+              <span className="side-spacer" aria-hidden="true" />
+            )}
           </div>
         </div>
 
