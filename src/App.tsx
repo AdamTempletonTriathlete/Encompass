@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
 import {
   ArrowRight,
@@ -24,14 +24,12 @@ import {
   BIOMES,
   DISCOVERIES,
   ENCOUNTER_RADIUS,
-  GATHER_RADIUS,
   INVENTORY_CAPACITY,
   OFFLINE_SPEED,
   RESOURCES,
   UPGRADED_OFFLINE_SPEED,
   distance,
   getBiomeAt,
-  getNodesAround,
   getTravellers,
   headingLabel,
 } from "./world";
@@ -264,19 +262,14 @@ function App() {
   const awayMode = useGameStore((state) => state.awayMode);
   const inventory = useGameStore((state) => state.inventory);
   const discoveries = useGameStore((state) => state.discoveries);
-  const collected = useGameStore((state) => state.collected);
   const message = useGameStore((state) => state.message);
   const enterWorld = useGameStore((state) => state.enterWorld);
   const leaveWorld = useGameStore((state) => state.leaveWorld);
   const tick = useGameStore((state) => state.tick);
   const setHeading = useGameStore((state) => state.setHeading);
-  const gather = useGameStore((state) => state.gather);
   const clearMessage = useGameStore((state) => state.clearMessage);
   const biome = getBiomeAt(position.x, position.y);
   const inventoryCount = Object.values(inventory).reduce((sum, amount) => sum + amount, 0);
-  const nearbyFind = useMemo(() => getNodesAround(position)
-    .filter((node) => !collected.includes(node.id) && distance(position, node) <= GATHER_RADIUS)
-    .sort((a, b) => distance(position, a) - distance(position, b))[0], [position, collected]);
   const nearbyTraveller = getTravellers(Date.now())
     .filter((traveller) => distance(position, traveller) <= ENCOUNTER_RADIUS)
     .sort((a, b) => distance(position, a) - distance(position, b))[0];
@@ -331,14 +324,6 @@ function App() {
         </header>
 
         <div className="scene-content">
-          {nearbyFind && (
-            <button className="find-prompt" onClick={() => gather(nearbyFind)}>
-              <span className="find-sparkle"><Sparkles size={18} /></span>
-              <span><small>SOMETHING NEARBY</small><strong>Gather {RESOURCES[nearbyFind.resource].name.toLowerCase()}</strong></span>
-              <span className="find-arrow"><ArrowRight size={16} /></span>
-            </button>
-          )}
-
           <div className="bottom-hud">
             <button className="side-button" onClick={() => setPanel("away")} aria-label={`When you're away: ${awayMode === "camp" ? "camp and rest" : "keep travelling"}`}>
               {awayMode === "camp" ? <TentTree size={20} /> : <Wind size={20} />}
