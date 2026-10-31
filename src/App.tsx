@@ -291,12 +291,17 @@ function App() {
       if (document.visibilityState === "visible") enterWorld(Date.now());
     };
     updateVisibility();
-    const timer = window.setInterval(() => tick(Date.now()), 150);
+    let frame = 0;
+    const loop = () => {
+      tick(Date.now());
+      frame = window.requestAnimationFrame(loop);
+    };
+    frame = window.requestAnimationFrame(loop);
     document.addEventListener("visibilitychange", updateVisibility);
     window.addEventListener("pagehide", onPageHide);
     window.addEventListener("pageshow", onPageShow);
     return () => {
-      window.clearInterval(timer);
+      window.cancelAnimationFrame(frame);
       document.removeEventListener("visibilitychange", updateVisibility);
       window.removeEventListener("pagehide", onPageHide);
       window.removeEventListener("pageshow", onPageShow);
