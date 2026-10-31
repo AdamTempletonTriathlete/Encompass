@@ -38,10 +38,10 @@ test("headings move continuously with north as zero and east as ninety", () => {
 test("leaving and returning preserves position and applies the correct speed", () => {
   store.setState({ position: { x: 0, y: 0 }, heading: 90, active: true, camping: false, awayMode: "travel", trailBoots: false, lastUpdatedAt: 1000 });
   store.getState().tick(11000);
-  assert.ok(Math.abs(store.getState().position.x - 11.5) < 1e-10);
+  assert.ok(Math.abs(store.getState().position.x - 9) < 1e-10);
   store.getState().leaveWorld(11000);
   store.getState().enterWorld(21000);
-  assert.ok(Math.abs(store.getState().position.x - 15) < 1e-10);
+  assert.ok(Math.abs(store.getState().position.x - 12.5) < 1e-10);
   store.setState({ position: { x: 0, y: 0 }, heading: 0, active: false, camping: false, awayMode: "travel", trailBoots: true, lastUpdatedAt: 1000 });
   store.getState().enterWorld(11000);
   assert.ok(Math.abs(store.getState().position.y - 5.5) < 1e-10);
@@ -64,10 +64,10 @@ test("turning and setting camp settle the previous movement first", () => {
     store.setState({ position: { x: 0, y: 0 }, heading: 0, active: true, camping: false, awayMode: "travel", lastUpdatedAt: 1000 });
     Date.now = () => 11000;
     store.getState().setHeading(90);
-    assert.ok(Math.abs(store.getState().position.y - 11.5) < 1e-10);
+    assert.ok(Math.abs(store.getState().position.y - 9) < 1e-10);
     Date.now = () => 21000;
     store.getState().setAwayMode("camp");
-    assert.ok(Math.abs(store.getState().position.x - 11.5) < 1e-10);
+    assert.ok(Math.abs(store.getState().position.x - 9) < 1e-10);
     assert.equal(store.getState().camping, true);
     const saved = JSON.parse(storage.get("encompass-journey-v1")).state;
     assert.equal(saved.heading, 90);
