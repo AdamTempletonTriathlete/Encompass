@@ -8,7 +8,7 @@ import type {
   Traveller,
 } from "./types";
 
-export const ONLINE_SPEED = 1.15;
+export const ONLINE_SPEED = 0.9;
 export const OFFLINE_SPEED = 0.35;
 export const UPGRADED_OFFLINE_SPEED = 0.55;
 export const INVENTORY_CAPACITY = 24;
