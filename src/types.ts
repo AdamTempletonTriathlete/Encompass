@@ -37,3 +37,15 @@ export interface Traveller extends Coordinate {
   color: string;
   note: string;
 }
+
+export type HatStyle = "ranger" | "cap" | "beanie" | "none";
+
+export interface Appearance {
+  outfit: string;
+  skin: string;
+  hair: string;
+  accent: string;
+  hat: HatStyle;
+  backpack: boolean;
+  scarf: boolean;
+}

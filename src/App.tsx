@@ -11,6 +11,7 @@ import {
   Leaf,
   MapPin,
   Minus,
+  Shirt,
   Sparkles,
   TentTree,
   UsersRound,
@@ -21,8 +22,13 @@ import Scene3D from "./components/Scene3D";
 import { useGameStore } from "./store";
 import type { AwayMode, BiomeId, ResourceId, Traveller } from "./types";
 import {
+  ACCENT_COLORS,
   BIOMES,
   DISCOVERIES,
+  HAIR_COLORS,
+  HAT_STYLES,
+  OUTFIT_COLORS,
+  SKIN_TONES,
   ENCOUNTER_RADIUS,
   INVENTORY_CAPACITY,
   OFFLINE_SPEED,
@@ -34,7 +40,7 @@ import {
   headingLabel,
 } from "./world";
 
-type Panel = "notes" | "satchel" | "away" | "encounter" | null;
+type Panel = "notes" | "style" | "satchel" | "away" | "encounter" | null;
 
 const STATUS_LABELS = {
   online: "Exploring online",
@@ -211,6 +217,48 @@ function Satchel({ onClose }: { onClose: () => void }) {
   );
 }
 
+function Swatches({ label, colors, value, onPick }: { label: string; colors: string[]; value: string; onPick: (color: string) => void }) {
+  return (
+    <div className="style-row">
+      <span>{label}</span>
+      <div className="swatches">
+        {colors.map((color) => (
+          <button key={color} type="button" className={`swatch ${value === color ? "selected" : ""}`} style={{ background: color }} aria-label={`${label} ${color}`} aria-pressed={value === color} onClick={() => onPick(color)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StyleSheet({ onClose }: { onClose: () => void }) {
+  const appearance = useGameStore((state) => state.appearance);
+  const setAppearance = useGameStore((state) => state.setAppearance);
+  return (
+    <Sheet title="Make it yours." eyebrow="EXPLORER STYLE" onClose={onClose}>
+      <p className="sheet-intro">Choose how your explorer looks out in the world. Changes appear instantly.</p>
+      <Swatches label="OUTFIT" colors={OUTFIT_COLORS} value={appearance.outfit} onPick={(outfit) => setAppearance({ outfit })} />
+      <Swatches label="ACCENT" colors={ACCENT_COLORS} value={appearance.accent} onPick={(accent) => setAppearance({ accent })} />
+      <Swatches label="SKIN" colors={SKIN_TONES} value={appearance.skin} onPick={(skin) => setAppearance({ skin })} />
+      <Swatches label="HAIR" colors={HAIR_COLORS} value={appearance.hair} onPick={(hair) => setAppearance({ hair })} />
+      <div className="style-row">
+        <span>HAT</span>
+        <div className="style-options">
+          {HAT_STYLES.map((hat) => (
+            <button key={hat.id} type="button" className={appearance.hat === hat.id ? "selected" : ""} aria-pressed={appearance.hat === hat.id} onClick={() => setAppearance({ hat: hat.id })}>{hat.name}</button>
+          ))}
+        </div>
+      </div>
+      <div className="style-row">
+        <span>EXTRAS</span>
+        <div className="style-options">
+          <button type="button" className={appearance.scarf ? "selected" : ""} aria-pressed={appearance.scarf} onClick={() => setAppearance({ scarf: !appearance.scarf })}>Scarf</button>
+          <button type="button" className={appearance.backpack ? "selected" : ""} aria-pressed={appearance.backpack} onClick={() => setAppearance({ backpack: !appearance.backpack })}>Backpack</button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
 function AwaySheet({ onClose }: { onClose: () => void }) {
   const mode = useGameStore((state) => state.awayMode);
   const setAwayMode = useGameStore((state) => state.setAwayMode);
@@ -318,6 +366,7 @@ function App() {
           <nav className="main-nav" aria-label="Your journey">
             <button className="nav-active" aria-label="Explore" onClick={closePanel}><Compass size={15} /> <span>Explore</span></button>
             <button aria-label={`Field notes, ${discoveries.length} discoveries`} onClick={() => setPanel("notes")}><BookOpen size={15} /> <span>Field notes</span><small>{discoveries.length}</small></button>
+            <button aria-label="Style" onClick={() => setPanel("style")}><Shirt size={15} /> <span>Style</span></button>
             <button aria-label="Satchel" onClick={() => setPanel("satchel")}><Backpack size={15} /> <span>Satchel</span></button>
           </nav>
           <div className="header-status"><span className="header-status-dot" /><span>YOUR JOURNEY IS LIVE<small>Saved on this device</small></span><div className="avatar">E</div></div>
@@ -347,6 +396,7 @@ function App() {
       </div>
       {panel === "notes" && <FieldNotes onClose={closePanel} />}
       {panel === "satchel" && <Satchel onClose={closePanel} />}
+      {panel === "style" && <StyleSheet onClose={closePanel} />}
       {panel === "away" && <AwaySheet onClose={closePanel} />}
       {panel === "encounter" && selectedTraveller && <EncounterSheet traveller={selectedTraveller} onClose={closePanel} />}
     </main>

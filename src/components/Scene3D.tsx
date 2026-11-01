@@ -4,10 +4,11 @@ import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { useGameStore } from "../store";
-import type { BiomeId, Coordinate, ResourceId, ResourceNode, Traveller } from "../types";
+import type { Appearance, BiomeId, Coordinate, ResourceId, ResourceNode, Traveller } from "../types";
 import {
   BIOMES,
   CHUNK_SIZE,
+  DEFAULT_APPEARANCE,
   ENCOUNTER_RADIUS,
   GATHER_RADIUS,
   RESOURCES,
@@ -161,39 +162,95 @@ function Camp({ color = "#d6b079" }: { color?: string }) {
   );
 }
 
-function Explorer({ position, color, heading = 0, camping = false }: {
+const EXPLORER_GEO = {
+  body: new THREE.CapsuleGeometry(0.31, 0.5, 4, 10),
+  head: new THREE.SphereGeometry(0.23, 12, 10),
+  hair: new THREE.SphereGeometry(0.245, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+  brim: new THREE.CylinderGeometry(0.46, 0.46, 0.03, 14),
+  crown: new THREE.ConeGeometry(0.27, 0.3, 10),
+  capTop: new THREE.SphereGeometry(0.255, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+  visor: new THREE.BoxGeometry(0.34, 0.03, 0.22),
+  beanie: new THREE.SphereGeometry(0.26, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+  pom: new THREE.SphereGeometry(0.07, 8, 6),
+  pack: new THREE.BoxGeometry(0.43, 0.5, 0.2),
+  roll: new THREE.CylinderGeometry(0.07, 0.07, 0.4, 8),
+  scarf: new THREE.TorusGeometry(0.25, 0.07, 6, 14),
+  tail: new THREE.BoxGeometry(0.1, 0.34, 0.05),
+  eye: new THREE.SphereGeometry(0.028, 6, 5),
+  shadow: new THREE.CircleGeometry(0.65, 20),
+};
+const EYE_MATERIAL = new THREE.MeshBasicMaterial({ color: "#2b2118" });
+const SHADOW_MATERIAL = new THREE.MeshBasicMaterial({ color: "#293b2c", transparent: true, opacity: 0.22 });
+
+function shortestAngle(from: number, to: number): number {
+  return ((((to - from) % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+}
+
+// Model faces local -Z after the heading rotation, matching movePosition (x = sin, z = -cos).
+function Explorer({ position, color, heading = 0, camping = false, appearance }: {
   position: Coordinate;
   color: string;
   heading?: number;
   camping?: boolean;
+  appearance?: Appearance;
 }) {
+  const look = appearance ?? { ...DEFAULT_APPEARANCE, outfit: color };
   const body = useRef<THREE.Group>(null);
-  useFrame(({ clock }) => {
-    if (body.current) body.current.position.y = camping ? 0 : Math.abs(Math.sin(clock.elapsedTime * 5)) * 0.06;
+  const facing = useRef<number | null>(null);
+  useFrame(({ clock }, delta) => {
+    const target = Math.PI - heading * Math.PI / 180;
+    facing.current = facing.current === null ? target : facing.current + shortestAngle(facing.current, target) * Math.min(1, delta * 8);
+    if (body.current) {
+      body.current.rotation.y = facing.current;
+      body.current.position.y = camping ? 0 : Math.abs(Math.sin(clock.elapsedTime * 5)) * 0.06;
+    }
   });
+  const outfit = useMemo(() => new THREE.MeshStandardMaterial({ color: look.outfit, roughness: 0.9 }), [look.outfit]);
+  const skin = useMemo(() => new THREE.MeshStandardMaterial({ color: look.skin, roughness: 0.8 }), [look.skin]);
+  const hair = useMemo(() => new THREE.MeshStandardMaterial({ color: look.hair, roughness: 1 }), [look.hair]);
+  const accent = useMemo(() => new THREE.MeshStandardMaterial({ color: look.accent, roughness: 0.9 }), [look.accent]);
+  const hat = useMemo(() => new THREE.MeshStandardMaterial({ color: look.hat === "ranger" ? "#485d43" : look.accent, roughness: 0.95 }), [look.hat, look.accent]);
   return (
     <group position={[position.x, terrainHeight(position.x, position.y), -position.y]}>
-      <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.65, 24]} />
-        <meshBasicMaterial color="#293b2c" transparent opacity={0.22} />
-      </mesh>
-      <group ref={body} rotation={[0, heading * Math.PI / 180, 0]}>
-        <mesh position={[0, 0.7, 0]} castShadow>
-          <capsuleGeometry args={[0.31, 0.52, 4, 8]} />
-          <meshStandardMaterial color={color} roughness={0.9} />
-        </mesh>
-        <mesh position={[0, 1.34, 0]} castShadow>
-          <sphereGeometry args={[0.23, 10, 8]} />
-          <meshStandardMaterial color="#e1bd9b" />
-        </mesh>
-        <mesh position={[0, 1.58, 0]} castShadow>
-          <coneGeometry args={[0.35, 0.25, 8]} />
-          <meshStandardMaterial color="#485d43" />
-        </mesh>
-        <mesh position={[0, 0.78, 0.29]} castShadow>
-          <boxGeometry args={[0.43, 0.5, 0.2]} />
-          <meshStandardMaterial color="#9b754e" />
-        </mesh>
+      <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={EXPLORER_GEO.shadow} material={SHADOW_MATERIAL} />
+      <group ref={body}>
+        <mesh position={[0, 0.7, 0]} castShadow geometry={EXPLORER_GEO.body} material={outfit} />
+        <mesh position={[0, 1.34, 0]} castShadow geometry={EXPLORER_GEO.head} material={skin} />
+        <mesh position={[-0.08, 1.37, -0.2]} geometry={EXPLORER_GEO.eye} material={EYE_MATERIAL} />
+        <mesh position={[0.08, 1.37, -0.2]} geometry={EXPLORER_GEO.eye} material={EYE_MATERIAL} />
+        {look.hat !== "beanie" && look.hat !== "cap" && (
+          <mesh position={[0, 1.37, 0.02]} rotation={[-0.35, 0, 0]} geometry={EXPLORER_GEO.hair} material={hair} />
+        )}
+        {look.hat === "ranger" && (
+          <group position={[0, 1.5, 0]}>
+            <mesh castShadow geometry={EXPLORER_GEO.brim} material={hat} />
+            <mesh position={[0, 0.16, 0]} castShadow geometry={EXPLORER_GEO.crown} material={hat} />
+          </group>
+        )}
+        {look.hat === "cap" && (
+          <group position={[0, 1.4, 0]}>
+            <mesh castShadow geometry={EXPLORER_GEO.capTop} material={hat} />
+            <mesh position={[0, 0.02, -0.25]} geometry={EXPLORER_GEO.visor} material={hat} />
+          </group>
+        )}
+        {look.hat === "beanie" && (
+          <group position={[0, 1.4, 0]}>
+            <mesh castShadow geometry={EXPLORER_GEO.beanie} material={hat} />
+            <mesh position={[0, 0.27, 0]} geometry={EXPLORER_GEO.pom} material={accent} />
+          </group>
+        )}
+        {look.scarf && (
+          <group position={[0, 1.08, 0]}>
+            <mesh rotation={[Math.PI / 2, 0, 0]} geometry={EXPLORER_GEO.scarf} material={accent} />
+            <mesh position={[0.14, -0.2, 0.2]} rotation={[0.15, 0, 0]} geometry={EXPLORER_GEO.tail} material={accent} />
+          </group>
+        )}
+        {look.backpack && (
+          <group position={[0, 0.78, 0.29]}>
+            <mesh castShadow geometry={EXPLORER_GEO.pack} material={accent} />
+            <mesh position={[0, 0.3, 0]} rotation={[0, 0, Math.PI / 2]} geometry={EXPLORER_GEO.roll} material={hair} />
+          </group>
+        )}
       </group>
       {camping && <Camp />}
     </group>
@@ -361,14 +418,23 @@ function TravellerFigure({ traveller }: { traveller: Traveller }) {
 
 function FollowingControls({ initial }: { initial: Coordinate }) {
   const controls = useRef<OrbitControlsImpl>(null);
+  const offset = useMemo(() => new THREE.Vector3(), []);
+  const spherical = useMemo(() => new THREE.Spherical(), []);
   useFrame((_, delta) => {
     const instance = controls.current;
     if (!instance) return;
-    const { position } = useGameStore.getState();
+    const { position, heading } = useGameStore.getState();
     const target = new THREE.Vector3(position.x, terrainHeight(position.x, position.y) + 0.6, -position.y);
     const shift = target.sub(instance.target).multiplyScalar(Math.min(1, delta * 4));
     instance.target.add(shift);
     instance.object.position.add(shift);
+    // Swing the camera behind the explorer so "forward" is always up the screen.
+    offset.copy(instance.object.position).sub(instance.target);
+    spherical.setFromVector3(offset);
+    const behind = -heading * Math.PI / 180;
+    spherical.theta += shortestAngle(spherical.theta, behind) * Math.min(1, delta * 3);
+    offset.setFromSpherical(spherical);
+    instance.object.position.copy(instance.target).add(offset);
     instance.update();
   });
   return (
@@ -407,6 +473,7 @@ export default function Scene3D() {
   const position = useGameStore((state) => state.position);
   const heading = useGameStore((state) => state.heading);
   const camping = useGameStore((state) => state.camping);
+  const appearance = useGameStore((state) => state.appearance);
   const collected = useGameStore((state) => state.collected);
   const chunkX = Math.floor(position.x / CHUNK_SIZE);
   const chunkY = Math.floor(position.y / CHUNK_SIZE);
@@ -437,7 +504,7 @@ export default function Scene3D() {
         ))}
         {nodes.map((node) => <FindMarker key={node.id} node={node} reachable={distance(position, node) <= GATHER_RADIUS} />)}
         {travellers.map((traveller) => <TravellerFigure key={traveller.id} traveller={traveller} />)}
-        <Explorer position={position} color="#c87952" heading={heading} camping={camping} />
+        <Explorer position={position} color="#c87952" heading={heading} camping={camping} appearance={appearance} />
         <FollowingControls initial={initial} />
       </Canvas>
     </div>
