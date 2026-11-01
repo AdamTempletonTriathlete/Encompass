@@ -18,6 +18,7 @@ import {
   Wind,
   X,
 } from "lucide-react";
+import { view } from "./view";
 import Scene3D from "./components/Scene3D";
 import { useGameStore } from "./store";
 import type { AwayMode, BiomeId, ResourceId, Traveller } from "./types";
@@ -54,8 +55,30 @@ function CompassDial({ heading, onChange }: { heading: number; onChange: (headin
     const dx = event.clientX - (rect.left + rect.width / 2);
     const dy = event.clientY - (rect.top + rect.height / 2);
     if (Math.hypot(dx, dy) < 10) return;
-    onChange(Math.atan2(dx, -dy) * 180 / Math.PI);
+    onChange(Math.atan2(dx, -dy) * 180 / Math.PI + view.heading);
   };
+  const face = useRef<HTMLDivElement>(null);
+  const needle = useRef<HTMLDivElement>(null);
+  const headingRef = useRef(heading);
+  headingRef.current = heading;
+  // Drive the rotation straight from the DOM each frame; the camera eases continuously.
+  useEffect(() => {
+    let frame = 0;
+    let last = "";
+    const update = () => {
+      const key = `${view.heading.toFixed(2)}|${headingRef.current}`;
+      if (key !== last) {
+        last = key;
+        const relative = ((((headingRef.current - view.heading) % 360) + 540) % 360) - 180;
+        if (face.current) face.current.style.transform = `rotate(${-view.heading}deg)`;
+        if (needle.current) needle.current.style.transform = `rotate(${relative}deg)`;
+      }
+      frame = requestAnimationFrame(update);
+    };
+    frame = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  const release = () => { view.steering = false; };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const key = event.key;
     if (key === "ArrowRight" || key === "ArrowUp") onChange(heading + (event.shiftKey ? 15 : 1));
@@ -78,21 +101,27 @@ function CompassDial({ heading, onChange }: { heading: number; onChange: (headin
       onKeyDown={onKeyDown}
       onPointerDown={(event) => {
         event.currentTarget.setPointerCapture(event.pointerId);
+        view.steering = true;
         setFromPointer(event);
       }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={release}
       onPointerMove={(event) => {
         if (event.currentTarget.hasPointerCapture(event.pointerId)) setFromPointer(event);
       }}
     >
       <div className="dial-inner" />
-      {Array.from({ length: 36 }, (_, index) => (
-        <span key={index} className={`dial-tick ${index % 9 === 0 ? "major" : index % 3 === 0 ? "medium" : ""}`} style={{ transform: `rotate(${index * 10}deg)` }} />
-      ))}
-      <span className="dial-cardinal north">N</span>
-      <span className="dial-cardinal east">E</span>
-      <span className="dial-cardinal south">S</span>
-      <span className="dial-cardinal west">W</span>
-      <div className="dial-needle" style={{ transform: `rotate(${heading}deg)` }}><span className="needle-point" /></div>
+      <div className="dial-face" ref={face}>
+        {Array.from({ length: 36 }, (_, index) => (
+          <span key={index} className={`dial-tick ${index % 9 === 0 ? "major" : index % 3 === 0 ? "medium" : ""}`} style={{ transform: `rotate(${index * 10}deg)` }} />
+        ))}
+        <span className="dial-cardinal north">N</span>
+        <span className="dial-cardinal east">E</span>
+        <span className="dial-cardinal south">S</span>
+        <span className="dial-cardinal west">W</span>
+      </div>
+      <div className="dial-needle" ref={needle}><span className="needle-point" /></div>
       <span className="dial-degrees">{String(heading).padStart(3, "0")}°</span>
     </div>
   );
