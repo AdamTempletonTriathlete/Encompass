@@ -126,3 +126,8 @@ button:disabled { cursor: default; }
   .bottom-hud { bottom: 14px; gap: 14px; }
   .find-prompt { bottom: 200px; min-width: 190px; }
 }
+
+.style-row { margin-top: 20px; } .style-row > span { display: block; margin-bottom: 9px; color: #bcccb6; font: 9px var(--mono); letter-spacing: .1em; }
+.swatches, .style-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch { width: 30px; height: 30px; padding: 0; border: 2px solid rgba(255,255,255,.2); border-radius: 50%; cursor: pointer; } .swatch.selected { border-color: #f1e3b5; box-shadow: 0 0 0 2px rgba(230,197,129,.5); }
+.style-options button { padding: 8px 14px; border: 1px solid var(--line); background: rgba(255,255,255,.03); color: #d9e3d3; font: 11px var(--mono); cursor: pointer; } .style-options button.selected { border-color: #e6c581; color: #f1e3b5; background: rgba(230,197,129,.12); }

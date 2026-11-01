@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { AwayMode, Coordinate, ResourceId, ResourceNode } from "./types";
+import type { Appearance, AwayMode, Coordinate, ResourceId, ResourceNode } from "./types";
 import {
+  DEFAULT_APPEARANCE,
   DISCOVERIES,
   GATHER_RADIUS,
   INVENTORY_CAPACITY,
@@ -25,6 +26,7 @@ interface GameState {
   discoveries: string[];
   collected: string[];
   trailBoots: boolean;
+  appearance: Appearance;
   message: string | null;
   enterWorld: (now: number) => void;
   leaveWorld: (now: number) => void;
@@ -34,6 +36,7 @@ interface GameState {
   gather: (node: ResourceNode) => void;
   discardResource: (resource: ResourceId) => void;
   craftBoots: () => void;
+  setAppearance: (changes: Partial<Appearance>) => void;
   clearMessage: () => void;
 }
 
@@ -48,6 +51,7 @@ const initialState = () => ({
   discoveries: [] as string[],
   collected: [] as string[],
   trailBoots: false,
+  appearance: { ...DEFAULT_APPEARANCE },
   message: null as string | null,
 });
 
@@ -156,6 +160,7 @@ export const useGameStore = create<GameState>()(
           });
         }
       },
+      setAppearance: (changes) => set({ appearance: { ...get().appearance, ...changes } }),
       clearMessage: () => set({ message: null }),
     }),
     {
@@ -171,7 +176,12 @@ export const useGameStore = create<GameState>()(
         discoveries: state.discoveries,
         collected: state.collected,
         trailBoots: state.trailBoots,
+        appearance: state.appearance,
       }),
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<GameState> | undefined;
+        return { ...current, ...saved, appearance: { ...current.appearance, ...saved?.appearance } };
+      },
     },
   ),
 );

@@ -1,8 +1,10 @@
 import type {
+  Appearance,
   Biome,
   BiomeId,
   Coordinate,
   Discovery,
+  HatStyle,
   ResourceId,
   ResourceNode,
   Traveller,
@@ -115,6 +117,26 @@ export function terrainHeight(x: number, y: number): number {
   const water = Math.min(1, Math.max(0, (riverDistance(x, y) - 2) / 4));
   return (hills + mountainHeight) * water - (1 - water) * 0.25;
 }
+
+export const OUTFIT_COLORS = ["#c87952", "#5f8fa8", "#7d9b62", "#a8648f", "#d3a947", "#4d5a6e"];
+export const SKIN_TONES = ["#f1d3b5", "#e1bd9b", "#c68e66", "#8d5a3b", "#5c3a28"];
+export const HAIR_COLORS = ["#2d2118", "#6b4528", "#b9822f", "#d9c28a", "#a8483a", "#8a8f99"];
+export const ACCENT_COLORS = ["#9b754e", "#c94f4f", "#3f7f8c", "#e0c25a", "#6e5aa8", "#3d3d3d"];
+export const HAT_STYLES: { id: HatStyle; name: string }[] = [
+  { id: "ranger", name: "Ranger" },
+  { id: "cap", name: "Cap" },
+  { id: "beanie", name: "Beanie" },
+  { id: "none", name: "None" },
+];
+export const DEFAULT_APPEARANCE: Appearance = {
+  outfit: OUTFIT_COLORS[0],
+  skin: SKIN_TONES[1],
+  hair: HAIR_COLORS[1],
+  accent: ACCENT_COLORS[0],
+  hat: "ranger",
+  backpack: true,
+  scarf: true,
+};
 
 export function movePosition(position: Coordinate, heading: number, seconds: number, speed: number): Coordinate {
   const radians = heading * Math.PI / 180;
