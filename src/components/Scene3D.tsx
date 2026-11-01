@@ -4,7 +4,7 @@ import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { useGameStore } from "../store";
-import { LOOK_RETURN_DELAY_MS, view } from "../view";
+import { beginLook, endLook, view } from "../view";
 import type { Appearance, BiomeId, Coordinate, ResourceId, ResourceNode, Traveller } from "../types";
 import {
   BIOMES,
@@ -433,8 +433,9 @@ function FollowingControls({ initial }: { initial: Coordinate }) {
     offset.copy(instance.object.position).sub(instance.target);
     spherical.setFromVector3(offset);
     const behind = -heading * Math.PI / 180;
-    // Leave the camera alone while the player looks around, then ease back after a short pause.
-    if (!view.steering && !view.dragging && performance.now() >= view.holdUntil) spherical.theta += shortestAngle(spherical.theta, behind) * Math.min(1, delta * 1.2);
+    view.offAxis = shortestAngle(spherical.theta, behind) * 180 / Math.PI;
+    // Once the player looks around, the camera stays put until they press Re-center.
+    if (!view.steering && !view.free) spherical.theta += shortestAngle(spherical.theta, behind) * Math.min(1, delta * 1.2);
     view.heading = -spherical.theta * 180 / Math.PI;
     offset.setFromSpherical(spherical);
     instance.object.position.copy(instance.target).add(offset);
@@ -443,8 +444,8 @@ function FollowingControls({ initial }: { initial: Coordinate }) {
   return (
     <OrbitControls
       ref={controls}
-      onStart={() => { view.dragging = true; }}
-      onEnd={() => { view.dragging = false; view.holdUntil = performance.now() + LOOK_RETURN_DELAY_MS; }}
+      onStart={beginLook}
+      onEnd={endLook}
       makeDefault
       target={[initial.x, terrainHeight(initial.x, initial.y), -initial.y]}
       enablePan={false}
