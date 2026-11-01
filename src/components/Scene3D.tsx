@@ -199,7 +199,7 @@ function Explorer({ position, color, heading = 0, camping = false, appearance }:
   const body = useRef<THREE.Group>(null);
   const facing = useRef<number | null>(null);
   useFrame(({ clock }, delta) => {
-    const target = Math.PI - heading * Math.PI / 180;
+    const target = -heading * Math.PI / 180;
     facing.current = facing.current === null ? target : facing.current + shortestAngle(facing.current, target) * Math.min(1, delta * 8);
     if (body.current) {
       body.current.rotation.y = facing.current;
