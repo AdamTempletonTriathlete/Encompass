@@ -78,7 +78,7 @@ function CompassDial({ heading, onChange }: { heading: number; onChange: (headin
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
   }, []);
-  const release = () => { view.steering = false; };
+  const release = () => { view.steering = false; view.holdUntil = 0; };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const key = event.key;
     if (key === "ArrowRight" || key === "ArrowUp") onChange(heading + (event.shiftKey ? 15 : 1));
