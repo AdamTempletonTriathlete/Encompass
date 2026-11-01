@@ -132,3 +132,5 @@ button:disabled { cursor: default; }
 .swatch { width: 30px; height: 30px; padding: 0; border: 2px solid rgba(255,255,255,.2); border-radius: 50%; cursor: pointer; } .swatch.selected { border-color: #f1e3b5; box-shadow: 0 0 0 2px rgba(230,197,129,.5); }
 .style-options button { padding: 8px 14px; border: 1px solid var(--line); background: rgba(255,255,255,.03); color: #d9e3d3; font: 11px var(--mono); cursor: pointer; } .style-options button.selected { border-color: #e6c581; color: #f1e3b5; background: rgba(230,197,129,.12); }
 .dial-face { position: absolute; inset: 0; pointer-events: none; }
+.recenter-button { pointer-events: auto; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid rgba(230,197,129,.55); border-radius: 3px; background: rgba(28,48,38,.88); color: #f1e3b5; font: 11px var(--mono); letter-spacing: .06em; cursor: pointer; backdrop-filter: blur(12px); animation: recenter-in .25s ease-out; }
+@keyframes recenter-in { from { opacity: 0; transform: translateY(6px); } }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
 import {
   ArrowRight,
@@ -11,6 +11,7 @@ import {
   Leaf,
   MapPin,
   Minus,
+  LocateFixed,
   Shirt,
   Sparkles,
   TentTree,
@@ -18,7 +19,7 @@ import {
   Wind,
   X,
 } from "lucide-react";
-import { view } from "./view";
+import { getCanRecenter, recenterView, subscribeRecenter, view } from "./view";
 import Scene3D from "./components/Scene3D";
 import { useGameStore } from "./store";
 import type { AwayMode, BiomeId, ResourceId, Traveller } from "./types";
@@ -78,7 +79,7 @@ function CompassDial({ heading, onChange }: { heading: number; onChange: (headin
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
   }, []);
-  const release = () => { view.steering = false; view.holdUntil = 0; };
+  const release = () => { view.steering = false; };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const key = event.key;
     if (key === "ArrowRight" || key === "ArrowUp") onChange(heading + (event.shiftKey ? 15 : 1));
@@ -102,6 +103,7 @@ function CompassDial({ heading, onChange }: { heading: number; onChange: (headin
       onPointerDown={(event) => {
         event.currentTarget.setPointerCapture(event.pointerId);
         view.steering = true;
+        recenterView();
         setFromPointer(event);
       }}
       onPointerUp={release}
@@ -335,6 +337,7 @@ function App() {
   const closePanel = useCallback(() => setPanel(null), []);
   const position = useGameStore((state) => state.position);
   const heading = useGameStore((state) => state.heading);
+  const canRecenter = useSyncExternalStore(subscribeRecenter, getCanRecenter);
   const camping = useGameStore((state) => state.camping);
   const awayMode = useGameStore((state) => state.awayMode);
   const inventory = useGameStore((state) => state.inventory);
@@ -407,6 +410,7 @@ function App() {
               {awayMode === "camp" ? <TentTree size={20} /> : <Wind size={20} />}
             </button>
             <div className="compass-hud">
+              {canRecenter && <button className="recenter-button" onClick={recenterView}>Re-center <LocateFixed size={15} /></button>}
               <div className="location-tag"><MapPin size={14} /><strong>{biome.name}</strong></div>
               <CompassDial heading={heading} onChange={setHeading} />
             </div>
